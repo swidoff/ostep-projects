@@ -2,7 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::{Bytes, Read};
 
-use itertools::Itertools;
+use itertools::{Itertools, Batching};
 use std::process::exit;
 
 ///**Details**
@@ -27,8 +27,8 @@ fn main() {
         .for_each(|file_result| {
             match file_result {
                 Ok(file) => {
-                    file.bytes().batching(read_line).for_each(|s|println!("{}", s))
-                },
+                    line_iter(file).for_each(|s| println!("{}", s))
+                }
                 Err(_) => {
                     println!("wcat: cannot open file");
                     exit(1);
@@ -39,15 +39,16 @@ fn main() {
     exit(0);
 }
 
-fn read_line(bytes: &mut Bytes<File>) -> Option<String> {
-    let buf: Vec<u8> = bytes
-        .map(|b| b.unwrap())
-        .take_while(|b| *b != 0x0A as u8)
-        .collect_vec();
-
-    if buf.is_empty() {
-        None
-    } else {
-        Some(String::from_utf8(buf).expect("Expected valid utf"))
-    }
+fn line_iter(file: File) -> Batching<Bytes<File>, fn(&mut Bytes<File>) -> Option<String>> {
+    file.bytes().batching(|b_iter| {
+        let buf = b_iter
+            .map(|b| b.unwrap())
+            .take_while(|b| *b != 0x0A as u8)
+            .collect_vec();
+        if buf.is_empty() {
+            None
+        } else {
+            Some(String::from_utf8(buf).expect("Expected valid utf"))
+        }
+    })
 }
