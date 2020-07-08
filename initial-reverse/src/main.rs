@@ -22,11 +22,11 @@ fn main() {
         },
         2 => {
             let in_file = open_file(&file_names[0]);
-            let mut out_file = create_file(&file_names[1]);
-            if files_are_equal(&in_file, &out_file) {
+            if is_the_same_file_as(&file_names[1], &in_file) {
                 eprintln!("reverse: input and output file must differ");
                 exit(1);
             }
+            let mut out_file = create_file(&file_names[1]);
             write_lines_reversed(&mut out_file, collect_lines(in_file));
         },
         _ => {
@@ -58,12 +58,13 @@ fn create_file(file_name: &String) -> File {
     }
 }
 
-fn files_are_equal(file1: &File, file2: &File) -> bool {
+fn is_the_same_file_as(file_name: &String, other_file: &File) -> bool {
     fn st_ino(file: &File) -> u64 {
         file.metadata().expect("Unable to get file metadata").st_ino()
     }
-
-    st_ino(file1) == st_ino(file2)
+    File::open(file_name)
+        .map(|new_file| st_ino(&new_file) == st_ino(other_file))
+        .unwrap_or(false)
 }
 
 fn read_line<R: Read>(b_iter: &mut Bytes<R>) -> Option<String> {
